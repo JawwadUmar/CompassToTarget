@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Compass to Target</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      background: #f3f4f6;
+    }
+    header {
+      background: #4caf50;
+      color: white;
+      padding: 1em;
+    }
+    main {
+      padding: 2em;
+    }
+    .form-group {
+      margin: 1em 0;
+    }
+    input {
+      padding: 0.5em;
+      margin: 0.5em 0;
+      width: 90%;
+      max-width: 300px;
+    }
+    button {
+      padding: 0.7em 1.5em;
+      background: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    .result {
+      margin-top: 2em;
+      padding: 1em;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    .status {
+      font-size: 1.2em;
+      margin-top: 1em;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Heading to Target</h1>
+  </header>
+  <main>
+    <div class="form-group">
+      <input type="number" id="latitude" placeholder="Enter Target Latitude" step="any" />
+    </div>
+    <div class="form-group">
+      <input type="number" id="longitude" placeholder="Enter Target Longitude" step="any" />
+    </div>
+    <button onclick="startCompass()">Start</button>
+    <div class="result">
+      <p><strong>Current Heading:</strong> <span id="heading">N/A</span></p>
+      <p><strong>Target Bearing:</strong> <span id="bearing">N/A</span></p>
+      <p class="status" id="status">Awaiting input...</p>
+    </div>
+  </main>
+  <script>
+    let targetLat, targetLon;
+
+    function calculateBearing(lat1, lon1, lat2, lon2) {
+      const toRadians = (deg) => (deg * Math.PI) / 180;
+      const toDegrees = (rad) => (rad * 180) / Math.PI;
+
+      const dLon = toRadians(lon2 - lon1);
+      const y = Math.sin(dLon) * Math.cos(toRadians(lat2));
+      const x =
+        Math.cos(toRadians(lat1)) * Math.sin(toRadians(lat2)) -
+        Math.sin(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.cos(dLon);
+
+      let bearing = toDegrees(Math.atan2(y, x));
+      return (bearing + 360) % 360; // Normalize to 0-360
+    }
+
+    function startCompass() {
+      targetLat = parseFloat(document.getElementById("latitude").value);
+      targetLon = parseFloat(document.getElementById("longitude").value);
+
+      if (isNaN(targetLat) || isNaN(targetLon)) {
+        alert("Please enter valid latitude and longitude!");
+        return;
+      }
+
+      if (window.DeviceOrientationEvent) {
+        window.addEventListener("deviceorientation", (event) => {
+          const heading = event.alpha; // Device's heading (0-360 degrees)
+          document.getElementById("heading").textContent = heading.toFixed(2) + "°";
+
+          // Use the user's current location
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const currentLat = position.coords.latitude;
+              const currentLon = position.coords.longitude;
+
+              const bearing = calculateBearing(currentLat, currentLon, targetLat, targetLon);
+              document.getElementById("bearing").textContent = bearing.toFixed(2) + "°";
+
+              const difference = Math.abs(heading - bearing);
+              if (difference < 15 || difference > 345) {
+                document.getElementById("status").textContent = "You're facing the target!";
+                document.getElementById("status").style.color = "green";
+              } else {
+                document.getElementById("status").textContent = "Adjust your direction.";
+                document.getElementById("status").style.color = "red";
+              }
+            },
+            (error) => {
+              alert("Error getting location: " + error.message);
+            },
+            { enableHighAccuracy: true }
+          );
+        });
+      } else {
+        alert("Device Orientation is not supported on this device.");
+      }
+    }
+  </script>
+</body>
+</html>
